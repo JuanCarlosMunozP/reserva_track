@@ -1,0 +1,65 @@
+# Despliegue de producción. El TLS/reverse proxy público se administra fuera
+# de este Compose; la UI HTTPS local queda excluida por profile.
+services:
+  migrate:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        REQUIREMENTS: prod
+    env_file:
+      - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      RUN_MIGRATIONS: "false"
+      SEED_DEMO_USERS: "false"
+    command: ["python", "manage.py", "migrate", "--noinput"]
+    profiles: ["migrate"]
+    volumes: !reset []
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      args:
+        REQUIREMENTS: prod
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      RUN_MIGRATIONS: "false"
+      SEED_DEMO_USERS: "false"
+    command: null
+    volumes: !reset []
+    # Proxy ejecutado en el host: accesible solo desde loopback.
+    ports:
+      - "127.0.0.1:8020:8000"
+
+  celery_worker:
+    build:
+      args:
+        REQUIREMENTS: prod
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      RUN_MIGRATIONS: "false"
+      SEED_DEMO_USERS: "false"
+    volumes: !reset []
+
+  celery_beat:
+    build:
+      args:
+        REQUIREMENTS: prod
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      RUN_MIGRATIONS: "false"
+      SEED_DEMO_USERS: "false"
+    volumes: !reset []
+
+  flower:
+    profiles: ["debug"]
+    volumes: !reset []
+
+  frontend:
+    profiles: ["local"]
+
+  mailpit:
+    profiles: ["debug"]

@@ -1,0 +1,67 @@
+# Secretos y datos sensibles (nunca versionar)
+credenciales*.txt
+*credentials*
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+secrets.*
+.secrets
+*.secret
+service-account*.json
+.npmrc
+.pypirc
+
+# Dependencias y entornos virtuales
+node_modules/
+venv/
+.venv/
+env/
+
+# Compilados y caché
+__pycache__/
+*.py[cod]
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+celerybeat-schedule
+celerybeat.pid
+
+# Pruebas y cobertura
+coverage/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# Logs
+*.log
+logs/
+
+# Docker local
+docker-compose.override.yml
+
+# Editores y sistema
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Herramientas de IA locales
+.claude/
+.agents/
+skills-lock.json
+
+# Prototipo (no se entrega)
+prototipo/

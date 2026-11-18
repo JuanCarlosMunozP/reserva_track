@@ -1,0 +1,251 @@
+================================================================================
+ REPORTE DE PRUEBAS UNITARIAS QA - RESERVA TRACK
+ Backend (Django 5.2 / DRF / Channels / Celery) + Frontend (React 19 / Vite / TS)
+================================================================================
+
+1. RESUMEN EJECUTIVO
+--------------------------------------------------------------------------------
+  Capa        Pruebas  Aprobadas  XFAIL*  Fallidas  Cobertura de lineas
+  ----------  -------  ---------  ------  --------  --------------------------
+  Backend       387       387        0        0      100 % (4657/4657 sentencias)
+  Frontend      279       279        0        0      100 % de lineas
+  ----------  -------  ---------  ------  --------  --------------------------
+  TOTAL         666       666        0        0
+
+  * XFAIL = defecto REAL documentado con una prueba que falla de forma
+    esperada. En la primera pasada de QA hubo 7; todos se CORRIGIERON en el
+    codigo (seccion 5) y sus pruebas se ejecutan ahora como pruebas normales.
+
+  Corrida final del backend (Docker): 387 passed en 99 s, cobertura 100 %
+  (TOTAL 4657 sentencias, 0 sin cubrir).
+
+  ACTUALIZACION 2026-11-16: tras aplicar las decisiones del spec 003
+  (desactivar en vez de borrar, cancelar reservas, horario permitido 07:00-21:00,
+  curso/area opcionales, edicion de reservas y gestion de usuarios en la interfaz)
+  las cifras pasaron de 343/254 a 387/279 pruebas. Se anadio ademas un recorrido
+  de extremo a extremo contra el sistema real en ejecucion (seccion 7).
+
+  Verificacion adicional: "tsc -b" del frontend termina sin errores (codigo 0).
+
+2. COMO EJECUTAR
+--------------------------------------------------------------------------------
+  Backend (contenedor Docker reserva_track-web-1):
+    docker exec reserva_track-web-1 sh -c "cd /app && python -m pytest -q \
+        -p no:cacheprovider --cov=. --cov-report=term-missing"
+    (solo las pruebas QA nuevas:  python -m pytest qa -q)
+
+  Frontend (PowerShell, desde D:\reserva_track\frontend; usar "D:" en mayuscula):
+    npx vitest run --coverage
+
+  Tecnologias de prueba: pytest, pytest-django, pytest-cov, Channels
+  WebsocketCommunicator; Vitest 5.1, jsdom, Testing Library, cobertura v8.
+  Hash MD5 y cache limpia en las pruebas backend para acelerarlas y aislarlas.
+
+3. BACKEND - INVENTARIO POR ARCHIVO (387 casos)
+--------------------------------------------------------------------------------
+  Archivo                                   Casos  Que valida
+  ----------------------------------------  -----  -----------------------------
+  common/tests/test_security.py               31   (suite previa del proyecto)
+  common/tests/test_ssd_behaviors.py           7   (suite previa del proyecto)
+  users/tests/test_mfa.py                     27   (suite previa del proyecto)
+  users/tests/test_demo_users.py               1   (suite previa del proyecto)
+  qa/test_auth_cookies.py                     23   Login/refresh/logout con cookies
+                                                   httpOnly, CSRF obligatorio con
+                                                   cookie, JWT por cookie/Bearer,
+                                                   health (Redis/BD caidos), throttling
+  qa/test_middleware_security.py              41   RequestGuard, cabeceras de
+                                                   seguridad, deteccion de inyeccion,
+                                                   sanitizado de serializers,
+                                                   paginacion
+  qa/test_permissions.py                      38   role_can, HasRolePermission (vista
+                                                   y objeto), permisos de usuarios
+  qa/test_users.py                            35   Manager, modelo, CRUD, cambio de
+                                                   contrasena + revocacion de
+                                                   sesiones, reset MFA, registro
+                                                   publico, comando seed
+  qa/test_users_edges.py                      12   Validadores con valores vacios,
+                                                   duplicados (create/update),
+                                                   queryset por rol, permisos por
+                                                   defecto
+  qa/test_mfa_extra.py                        16   Cifrado Fernet/rotacion de clave,
+                                                   re-enrolamiento, bloqueo por
+                                                   intentos, codigos de recuperacion
+                                                   de un solo uso, desafio firmado,
+                                                   vistas status/setup/confirm/
+                                                   recovery/disable
+  qa/test_spaces_branches_audit.py            33   Espacios, responsabilidades,
+                                                   catalogo (409 por PROTECT),
+                                                   auditoria y admin
+  qa/test_reservations.py                     26   Reglas de creacion, conflictos,
+                                                   edicion, aprobar/rechazar,
+                                                   alcance por rol, notificaciones
+  qa/test_realtime.py                         22   WebSocket: handshake 4401, cookie y
+                                                   Bearer, mensajes global/privado,
+                                                   fallo de channel layer (1013),
+                                                   eventos, middleware, routing,
+                                                   ASGI con validacion de origen
+  qa/test_config.py                           27   URLs (/admin, docs, schema, DEBUG),
+                                                   asgi/wsgi/celery/manage.py,
+                                                   settings base (S3, Sentry), dev,
+                                                   prod (endurecimiento y rechazo de
+                                                   configuraciones inseguras)
+  qa/test_migration_and_csrf.py                5   Migracion de datos branches.0002
+                                                   (modelos simulados) y callback
+                                                   interno de enforce_csrf
+  qa/test_spec003_decisions.py                11   Desactivar en vez de borrar,
+                                                   cancelar (solicitante/admin,
+                                                   409 si ya inicio), horario
+  qa/test_spec003_gaps.py                      9   FR-039, FR-033, concurrencia SC-001
+  qa/test_spec003_users.py                    10   Registro, roles, auditoria, 403, health
+  qa/test_spec003_realtime.py                  6   WebSocket 4401, destinatarios, fallos
+  qa/test_spec003_us4_us5.py                   6   Disponibilidad, espacios, rendimiento
+  qa/test_spec003_latency.py                   1   Latencia de avisos SC-003 (Redis real)
+  ----------------------------------------  -----
+  TOTAL                                      387   (387 OK, 0 XFAIL)
+
+4. COBERTURA
+--------------------------------------------------------------------------------
+  BACKEND (pytest-cov, corrida final completa)
+    TOTAL: 4657 sentencias, 0 sin cubrir -> 100 %. Incluye codigo de
+    aplicacion y de pruebas; las lineas de las dos pruebas de WebSocket que
+    antes eran XFAIL ahora se ejecutan por completo.
+
+  FRONTEND (Vitest + v8)
+    Sentencias : 99.27 %
+    Ramas      : 98.03 %
+    Funciones  : 98.73 %
+    Lineas     : 100 %
+    Las ~11 ramas restantes son guardas defensivas (operadores ?? / ?. con
+    fallbacks de SSR, p. ej. ThemeContext, ChartContainer, api.ts:108,145,
+    permissions.ts:53) no alcanzables desde jsdom sin manipular el entorno.
+
+5. DEFECTOS ENCONTRADOS Y CORREGIDOS
+--------------------------------------------------------------------------------
+  La primera pasada los documento con XFAIL estricto; ya estan corregidos para
+  cumplir SPEC.md / SSD.md y sus pruebas pasan como pruebas normales.
+
+  D1 [ALTA] realtime/middleware.py - _user_from_token (SSD-12)
+     Un JWT valido de un usuario eliminado o inactivo lanzaba AuthenticationFailed
+     sin capturar. CORREGIDO: se captura y se trata como anonimo -> cierre 4401.
+     Pruebas: test_token_for_deleted_user_is_closed_with_4401,
+              test_token_for_inactive_user_is_closed_with_4401.
+
+  D2 [ALTA] users/models.py - UserManager no enlazado (SPEC 2 y 4)
+     Los superusuarios se creaban sin role/type y User.objects.active() no
+     existia. CORREGIDO: objects = UserManager() + migracion
+     users/migrations/0003_user_manager.py (makemigrations --check: sin cambios).
+     Pruebas: test_custom_manager_is_wired_to_user_model,
+              test_superuser_gets_admin_role_by_default.
+
+  D3 [MEDIA] config/urls.py - ReDoc (SPEC 5)
+     url_name='api/redoc/' invalido -> 500. CORREGIDO: url_name='schema'.
+     Prueba: test_redoc_is_served.
+
+  D4 [MEDIA] config/urls.py - /media/ en DEBUG (SPEC 7)
+     static(..., document=...) -> TypeError. CORREGIDO: document_root=.
+     Prueba: test_media_files_are_served_in_debug.
+
+  D5 [BAJA] config/urls.py - redirect_frontend_home (SPEC 3.4)
+     Usaba `request` como netloc. CORREGIDO: request_host.
+     Prueba: test_admin_redirect_loopback_frontend_without_port.
+
+  D6 [BAJA] config/urls.py - regex de /admin (SPEC 3.4)
+     ^admin(/.)?$ devolvia 404 en /admin/. CORREGIDO: ^admin(/.*)?$.
+     Prueba: test_admin_trailing_slash_redirects.
+
+  Frontend: sin desviaciones respecto a SPEC 3.4 y SSD-12; sin cambios.
+
+  Otros hallazgos menores (cubiertos con pruebas normales):
+   - Validadores de serializers (username/nombre/apellido "vacios tras
+     normalizar") no son alcanzables por HTTP porque DRF rechaza antes los
+     campos en blanco; se comprueban llamando al validador directamente.
+   - La rama por defecto de UserViewSet.get_permissions solo se alcanza con
+     peticiones OPTIONS (accion "metadata").
+
+6. FRONTEND - INVENTARIO POR ARCHIVO (src/test/, 279 pruebas ejecutadas)
+--------------------------------------------------------------------------------
+  Archivo                           Casos declarados  Alcance
+  --------------------------------  ----------------  --------------------------
+  app.test.tsx                             6          Rutas, guardas, layout
+  components.test.tsx                     37          Componentes UI y de dominio
+  context.test.tsx                        27          Auth, tema, notificaciones
+  lib.api.test.ts                         24          axios: CSRF, refresh 401
+  lib.basic.test.ts                       15          Utilidades, formatos
+  lib.websocket.test.ts                   15          Singleton WS, reconexion
+  main.test.tsx                            1          Arranque de la aplicacion
+  pages.reservations.test.tsx             20          Reservas
+  pages.security.test.tsx                 10          Seguridad / MFA (TOTP)
+  pages.security.load.test.tsx             3          Errores de carga (aislado)
+  pages.simple.test.tsx                   19          Paginas simples
+  pages.spaces.test.tsx                   13          Espacios y detalle
+  services.auth.test.ts                   10          Servicios de autenticacion
+  services.reservaTrack.test.ts           38          Servicios de dominio
+  --------------------------------  ----------------
+  Nota: "casos declarados" cuenta bloques it/test; las pruebas parametrizadas
+  (it.each) se expanden hasta las 279 ejecutadas.
+
+  Configuracion anadida: vite.config.ts (bloque test + coverage v8),
+  src/test/setup.ts (jest-dom, cleanup, localStorage.clear),
+  tsconfig.app.json (exclude src/test para no romper "tsc -b").
+
+7. RECORRIDO DE EXTREMO A EXTREMO CONTRA EL SISTEMA REAL (2026-11-16)
+--------------------------------------------------------------------------------
+  Se ejecuto contra https://localhost (nginx + API + PostgreSQL + Redis en Docker)
+  con cookies httpOnly y CSRF reales, usando usuarios temporales (borrados al final):
+  estudiante, otro estudiante, administrador y superusuario.
+
+  Resultado: 28 de 28 comprobaciones correctas.
+    - Solicitar reserva valida (201, pendiente, codigo RT-2026-NNNN).
+    - Fuera de horario (06:00 y 22:00) rechazada (400); cruce de horario rechazado.
+    - Solicitante edita su pendiente; otro usuario no puede editar ni cancelar (404).
+    - Cancelar: el solicitante cancela; repetir da 409; el horario queda libre;
+      el administrador cancela una reserva ajena; el administrador aprueba.
+    - Usuarios: el administrador restablece contrasena (la nueva permite entrar),
+      desactiva y reactiva; NO asigna rol admin (400), NO elimina (403), NO crea (403).
+    - El superusuario crea un usuario, le asigna rol administrador y lo elimina.
+    - Eliminar un usuario o un espacio con reservas devuelve 204 pero los DESACTIVA;
+      las reservas se conservan.
+
+  LIMITACION: no se hizo clic en la interfaz grafica (no hubo herramienta de
+  navegador disponible). Los botones y formularios los cubren las pruebas de
+  Vitest con Testing Library, no una prueba manual en el navegador.
+
+8. LIMITACIONES Y NOTAS
+--------------------------------------------------------------------------------
+  Pruebas
+  - No hay prueba manual con clics en el navegador; la interfaz solo se valida
+    con Vitest + Testing Library (jsdom). Pendiente: recorrido manual o E2E
+    con Playwright/Cypress.
+  - Las pruebas de WebSocket usan InMemoryChannelLayer; el aviso en tiempo real
+    con Redis real solo se comprobo en el recorrido de la seccion 7.
+  - No se ejecuto prueba de carga: el criterio SC-007 (p95 < 3 s en consulta de
+    espacios) queda sin medir con datos de volumen.
+  - La cobertura del 100 % mide lineas, no ramas ni combinaciones de permisos.
+  - La migracion branches.0002 se prueba con modelos simulados porque el
+    esquema que usa (Location.city / Location.department) ya no existe tras
+    migraciones posteriores.
+  - El backend corre contra PostgreSQL y Redis reales en Docker, salvo en las
+    pruebas de WebSocket (InMemoryChannelLayer) y de salud (Redis simulado).
+  - Advertencias (71): deprecaciones de terceros y paginacion sin ordenar;
+    ninguna afecta al resultado.
+
+  Producto (decisiones de la spec 003, ver "Assumptions" y Non-Goals)
+  - Reducir la capacidad de un espacio no revalida las reservas existentes.
+  - La disponibilidad para usuarios sin alcance total es parcial; el conflicto
+    real se detecta al solicitar.
+  - El modulo embebido requiere sesion previa en ReservaTrack (sin SSO).
+  - La auditoria solo se registra: quien la consulta y su retencion no estan
+    definidos.
+  - Sin recuperacion de contrasena por correo, sin cancelacion por cambio de
+    estado de un espacio, sin reportes ni historial funcional.
+  - Eliminar un usuario o espacio con reservas lo desactiva (no lo borra).
+
+  Entorno
+  - Las pruebas de backend requieren los servicios db y redis del Compose.
+  - Frontend: ejecutar con --maxWorkers=3 para evitar falsos timeouts.
+  - El lint del frontend emite advertencias (no errores) documentadas en
+    specs/003-reservatrack-platform/quickstart.md.
+
+================================================================================
+ FIN DEL REPORTE
+================================================================================
